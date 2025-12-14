@@ -1,20 +1,6 @@
-// --- BILLING IMPORTS (v12 kompatibel) ---
-import {
-  initConnection,
-  getProducts,
-  requestPurchase,
-  purchaseUpdatedListener,
-  purchaseErrorListener,
-  finishTransaction,
-  getAvailablePurchases,
-  endConnection
-} from "react-native-iap";
-
+// TEIL 1: IMPORTS UND KONFIGURATION
 import React, { useState, useEffect } from 'react';
-import { 
-  StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, 
-  Modal, Alert, Image, StatusBar, Platform
-} from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput, Modal, Alert, Image } from 'react-native';
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
@@ -23,60 +9,41 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { 
-  Home, Plus, Settings, Search, ChevronRight, X, Sparkles, 
-  Camera, Image as ImageIcon, Trash2, Globe, Folder, Lock, 
-  Calendar, Edit2, ArrowLeft, Bell, ArrowUpDown, Check,
-  Download, FileText, Palette, Copy, CheckCircle,
-  ArrowRight, RefreshCcw
-} from 'lucide-react-native';
+import { Home, Plus, Settings, Search, ChevronRight, X, Sparkles, Camera, Image as ImageIcon, Trash2, Globe, Folder, Lock, Calendar, Edit2, ArrowLeft, Bell, ArrowUpDown, Check, Download, FileText, Palette, Copy, CheckCircle, ArrowRight, RefreshCcw } from 'lucide-react-native';
+
+// === KORRIGIERTE IAP IMPORTS ===
+import {
+  initConnection,
+  endConnection,
+  getAvailablePurchases,
+  requestPurchase,
+  finishTransaction,
+  purchaseUpdatedListener,
+  purchaseErrorListener,
+  type Purchase,
+  type SubscriptionPurchase,
+  type PurchaseError,
+} from 'react-native-iap';
 
 
-// --- BILLING IMPORTS (FIXED) ---
-// Wir importieren alles als Objekt, um TS-Fehler zu umgehen und Laufzeitfehler zu vermeiden
 
 
-// Wir entpacken die Funktionen sicherheitshalber
 
+// TYPES
+interface Product { id: string; name: string; brand: string; category: string; openedDate: string; pao: number; expiryDate: string; imageUri: string | null; notes: string; notificationOffsets: number[]; notificationIds: string[]; }
 
-// --- TYPES ---
-interface Product {
-  id: string;
-  name: string;
-  brand: string;
-  category: string;
-  openedDate: string;
-  pao: number;
-  expiryDate: string;
-  imageUri: string | null;
-  notes: string;
-  notificationOffsets: number[];
-  notificationIds: string[];
-}
+// IAP CONFIG
+const PRODUCT_ID = 'premium_unlock';
 
-// --- KONFIGURATION ---
-const PRODUCT_ID = 'premium_unlock'; 
-const productIds = [PRODUCT_ID];
+Notifications.setNotificationHandler({ handleNotification: async () => ({ shouldShowAlert: true, shouldPlaySound: true, shouldSetBadge: false } as any) });
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({ shouldShowAlert: true, shouldPlaySound: true, shouldSetBadge: false } as any),
-});
-
-// --- THEMES ---
-const THEMES = {
-  beige: { label: "Beige (Standard)", colors: { bg: '#F5F1EC', card: 'rgba(255, 255, 255, 0.95)', text: '#000000', subText: '#666666', fresh: '#32CD32', warning: '#FFA500', expired: '#FF4C4C', gold: '#C7A05F', border: '#E5E5E5', tint: '#000000', input: '#FFFFFF' }, premium: false },
-  dark:  { label: "Dark Mode", colors: { bg: '#121214', card: '#1E1E20', text: '#FFFFFF', subText: '#A1A1AA', fresh: '#4ADE80', warning: '#FACC15', expired: '#F87171', gold: '#FFD700', border: '#27272A', tint: '#FFFFFF', input: '#27272A' }, premium: false },
-  rose:  { label: "Rose Gold", colors: { bg: '#FAF6F4', card: '#FFFFFF', text: '#4A3B32', subText: '#8D7B6F', fresh: '#66BB6A', warning: '#FFA726', expired: '#EF5350', gold: '#D9917E', border: '#F6D3C8', tint: '#D9917E', input: '#FFF0E8' }, premium: true },
-  blue:  { label: "Ocean Blue", colors: { bg: '#F0F4F8', card: '#FFFFFF', text: '#102A43', subText: '#627D98', fresh: '#27AB83', warning: '#F0B429', expired: '#E12D39', gold: '#334E68', border: '#D9E2EC', tint: '#40C3F7', input: '#FFFFFF' }, premium: true },
-  green: { label: "Mint Fresh", colors: { bg: '#E8F5E9', card: '#FFFFFF', text: '#1B5E20', subText: '#4CAF50', fresh: '#43A047', warning: '#FDD835', expired: '#E53935', gold: '#2E7D32', border: '#C8E6C9', tint: '#00C853', input: '#FFFFFF' }, premium: true },
-  purple:{ label: "Royal Purple", colors: { bg: '#F3E5F5', card: '#FFFFFF', text: '#4A148C', subText: '#8E24AA', fresh: '#66BB6A', warning: '#FFA726', expired: '#AB47BC', gold: '#7B1FA2', border: '#E1BEE7', tint: '#AA00FF', input: '#FFFFFF' }, premium: true },
-};
+// THEMES
+const THEMES = { beige: { label: "Beige (Standard)", colors: { bg: '#F5F1EC', card: 'rgba(255, 255, 255, 0.95)', text: '#000000', subText: '#666666', fresh: '#32CD32', warning: '#FFA500', expired: '#FF4C4C', gold: '#C7A05F', border: '#E5E5E5', tint: '#000000', input: '#FFFFFF' }, premium: false }, dark: { label: "Dark Mode", colors: { bg: '#121214', card: '#1E1E20', text: '#FFFFFF', subText: '#A1A1AA', fresh: '#4ADE80', warning: '#FACC15', expired: '#F87171', gold: '#FFD700', border: '#27272A', tint: '#FFFFFF', input: '#27272A' }, premium: false }, rose: { label: "Rose Gold", colors: { bg: '#FAF6F4', card: '#FFFFFF', text: '#4A3B32', subText: '#8D7B6F', fresh: '#66BB6A', warning: '#FFA726', expired: '#EF5350', gold: '#D9917E', border: '#F6D3C8', tint: '#D9917E', input: '#FFF0E8' }, premium: true }, blue: { label: "Ocean Blue", colors: { bg: '#F0F4F8', card: '#FFFFFF', text: '#102A43', subText: '#627D98', fresh: '#27AB83', warning: '#F0B429', expired: '#E12D39', gold: '#334E68', border: '#D9E2EC', tint: '#40C3F7', input: '#FFFFFF' }, premium: true }, green: { label: "Mint Fresh", colors: { bg: '#E8F5E9', card: '#FFFFFF', text: '#1B5E20', subText: '#4CAF50', fresh: '#43A047', warning: '#FDD835', expired: '#E53935', gold: '#2E7D32', border: '#C8E6C9', tint: '#00C853', input: '#FFFFFF' }, premium: true }, purple:{ label: "Royal Purple", colors: { bg: '#F3E5F5', card: '#FFFFFF', text: '#4A148C', subText: '#8E24AA', fresh: '#66BB6A', warning: '#FFA726', expired: '#AB47BC', gold: '#7B1FA2', border: '#E1BEE7', tint: '#AA00FF', input: '#FFFFFF' }, premium: true } };
 type ThemeKey = keyof typeof THEMES;
 
 // --- LEGAL TEXTS ---
 const privacyEn = "Privacy Policy\n\n1. General & Local Storage\nThis app ('BeautyExpiry') processes personal data exclusively locally on your device. No data is transferred to external servers. You retain full control over your data.\n\n2. Processed Data\nWe only store data you actively enter (Product Data, Images, Settings).\n\n3. Permissions\n• Camera: Solely for taking product photos.\n• Gallery: To import existing photos.\n• Notifications: Local reminders.\n\n4. Liability\nThe app serves solely for documentation. We assume no liability for skin irritations or actual shelf life.\n\n5. Your Rights\nExercise your rights directly on your device.";
 const termsEn = "Terms & Conditions\n\n1. Scope\n'BeautyExpiry' is a local tracking tool.\n\n2. Premium\nOne-time purchase unlocks unlimited products, exports, and themes.\n\n3. Liability\nUse at your own risk. We are not liable for expired products.\n\n4. Payment\nProcessed via App Store.\n\n5. Availability\nOffline functionality.";
-
 const LEGAL_TEXTS: any = {
     privacy: {
         de: "Datenschutzerklärung\n\n1. Allgemeines & Lokale Speicherung\nDiese App („BeautyExpiry“) verarbeitet personenbezogene Daten ausschließlich lokal auf Ihrem Endgerät. Es erfolgt keine Übertragung von Daten an externe Server.\n\n2. Verarbeitete Daten\nDie App speichert nur Daten, die Sie aktiv eingeben (Produktdaten, Bilder, Einstellungen).\n\n3. Berechtigungen\n• Kamera: Zum Fotografieren von Produkten.\n• Galerie: Zum Importieren von Bildern.\n• Benachrichtigungen: Für lokale Erinnerungen.\n\n4. Haftungsausschluss\nDie App dient der Dokumentation. Wir haften nicht für Hautirritationen oder die tatsächliche Haltbarkeit.\n\n5. Ihre Rechte\nDa keine Daten auf Servern liegen, haben Sie die volle Kontrolle auf Ihrem Gerät.",
@@ -90,7 +57,6 @@ const LEGAL_TEXTS: any = {
     }
 };
 // --- TRANSLATIONS ---
-
 // 1. Englisch (Basis)
 const enTranslations = {
     dashboard: "Dashboard", add: "Add", settings: "Settings", searchPlaceholder: "Search products...",
@@ -111,7 +77,7 @@ const enTranslations = {
     cat_makeup: "Make-Up", cat_skincare: "Skincare", cat_haircare: "Haircare", cat_perfume: "Perfume",
     sortExpiry: "By Expiry", sortName: "By Name", all: "All", new: "+ New",
     errorName: "Name required", errorDate: "Invalid date. Format: DD.MM.YYYY", errorPao: "Please enter valid months",
-    limitReached: "Unlock Unlimited Products", 
+    limitReached: "Unlock Unlimited Products",
     premiumFeature: "Unlock Premium Features",
     deleteTitle: "Delete", deleteMsg: "Really delete?", deleteExpiredMsg: "Really remove all expired products?",
     deleteAllMsg: "Really remove ALL products? This cannot be undone.",
@@ -135,7 +101,6 @@ const enTranslations = {
     onboard3: "Keep your routine fresh",
     version: "Version 1.0.0"
 };
-
 // 2. Deutsch
 const deTranslations = {
     dashboard: "Dashboard", add: "Hinzufügen", settings: "Einstellungen", searchPlaceholder: "Suche Produkte...",
@@ -147,7 +112,7 @@ const deTranslations = {
     notesLabel: "Notizen", remindersLabel: "Erinnerungen", save: "Speichern", camera: "Kamera", gallery: "Galerie",
     removeImage: "Bild entfernen", custom: "Eigen", appearance: "DARSTELLUNG", language: "Sprache", theme: "Design",
     premiumContent: "INHALTE (PREMIUM)", manageCategories: "Kategorien verwalten", exportData: "Export & Backup",
-    exportCSV: "Als CSV exportieren", exportPDF: "Als PDF exportieren", 
+    exportCSV: "Als CSV exportieren", exportPDF: "Als PDF exportieren",
     otherOptions: "WEITERE OPTIONEN", deleteExpired: "Abgelaufene entfernen", deleteAll: "Alle Produkte entfernen",
     privacy: "Datenschutz", terms: "AGB",
     premiumActive: "✅ Premium Aktiv", unlockPremium: "Premium freischalten", restorePurchase: "Käufe wiederherstellen",
@@ -156,7 +121,7 @@ const deTranslations = {
     cat_makeup: "Make-Up", cat_skincare: "Hautpflege", cat_haircare: "Haarpflege", cat_perfume: "Parfüm",
     sortExpiry: "Nach Ablauf", sortName: "Nach Name", all: "Alle", new: "+ Neu",
     errorName: "Name erforderlich", errorDate: "Ungültiges Datum. Format: TT.MM.JJJJ", errorPao: "Bitte gültige Monate eingeben",
-    limitReached: "Unbegrenzte Produkte freischalten", 
+    limitReached: "Unbegrenzte Produkte freischalten",
     premiumFeature: "Erweiterte Funktionen freischalten",
     deleteTitle: "Löschen", deleteMsg: "Wirklich löschen?", deleteExpiredMsg: "Möchtest du wirklich alle abgelaufenen Produkte löschen?",
     deleteAllMsg: "Möchtest du wirklich ALLE Produkte löschen? Das kann nicht rückgängig gemacht werden.",
@@ -181,7 +146,6 @@ const deTranslations = {
     onboard3: "Ordnung in deinem Badezimmer",
     version: "Version 1.0.0"
 };
-
 // 3. Spanisch (Español)
 const es = {
     ...enTranslations, // Fallback
@@ -210,7 +174,6 @@ const es = {
     welcomeTitle: "Bienvenido a BeautyExpiry", welcomeText: "Gestiona tus cosméticos y evita el desperdicio.", startBtn: "Empezar",
     onboard1: "Rastrear y organizar productos", onboard2: "Recibe recordatorios", onboard3: "Mantén tu rutina fresca"
 };
-
 // 4. Französisch (Français)
 const fr = {
     ...enTranslations,
@@ -239,7 +202,6 @@ const fr = {
     welcomeTitle: "Bienvenue sur BeautyExpiry", welcomeText: "Gérez vos cosmétiques et évitez le gaspillage.", startBtn: "Commencer",
     onboard1: "Suivre et organiser", onboard2: "Recevoir des rappels", onboard3: "Routine toujours fraîche"
 };
-
 // 5. Italienisch (Italiano)
 const it = {
     ...enTranslations,
@@ -268,7 +230,6 @@ const it = {
     welcomeTitle: "Benvenuto in BeautyExpiry", welcomeText: "Gestisci i tuoi cosmetici ed evita sprechi.", startBtn: "Inizia",
     onboard1: "Traccia e organizza", onboard2: "Ricevi promemoria", onboard3: "Routine sempre fresca"
 };
-
 // 6. Portugiesisch (Português)
 const pt = {
     ...enTranslations,
@@ -297,7 +258,6 @@ const pt = {
     welcomeTitle: "Bem-vindo ao BeautyExpiry", welcomeText: "Gerencie seus cosméticos e evite desperdícios.", startBtn: "Começar",
     onboard1: "Rastrear e organizar", onboard2: "Receber lembretes", onboard3: "Rotina sempre fresca"
 };
-
 // 7. Türkisch (Türkçe)
 const tr = {
     ...enTranslations,
@@ -326,9 +286,7 @@ const tr = {
     welcomeTitle: "BeautyExpiry'ye Hoş Geldiniz", welcomeText: "Kozmetik ürünlerinizi yönetin, tarihleri takip edin ve israfı önleyin.", startBtn: "Başla",
     onboard1: "Takip et ve düzenle", onboard2: "Hatırlatıcı al", onboard3: "Rutinini taze tut"
 };
-
 const TRANSLATIONS: any = { de: deTranslations, en: enTranslations, es, fr, it, pt, tr };
-
 type Language = keyof typeof TRANSLATIONS;
 const AVAILABLE_LANGUAGES: {code: Language, label: string, flag: string}[] = [
     {code: 'en', label: 'English', flag: '🇬🇧'},
@@ -339,34 +297,15 @@ const AVAILABLE_LANGUAGES: {code: Language, label: string, flag: string}[] = [
     {code: 'pt', label: 'Português', flag: '🇧🇷'},
     {code: 'tr', label: 'Türkçe', flag: '🇹🇷'}
 ];
-
 const STANDARD_CATEGORIES_KEYS = ['cat_makeup', 'cat_skincare', 'cat_haircare', 'cat_perfume'];
-
 // --- HELPERS ---
-const formatDate = (dateString: string) => {
-  if (!dateString) return '';
-  const [year, month, day] = dateString.split('-');
-  return `${day}.${month}.${year}`;
-};
-const parseDateToISO = (displayDate: string) => {
-    const parts = displayDate.split('.');
-    if (parts.length !== 3) return null;
-    return `${parts[2]}-${parts[1]}-${parts[0]}`;
-}
-const calculateExpiryDateISO = (openedISO: string, pao: number) => {
-  const date = new Date(openedISO);
-  date.setMonth(date.getMonth() + pao);
-  return date.toISOString().split('T')[0];
-};
-const getDaysLeft = (expiryDate: string) => {
-  const expiry = new Date(expiryDate);
-  const today = new Date();
-  const diffTime = expiry.getTime() - today.getTime();
-  return Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-};
+const formatDate = (dateString: string) => { if (!dateString) return ''; const [year, month, day] = dateString.split('-'); return `${day}.${month}.${year}`; };
+const parseDateToISO = (displayDate: string) => { const parts = displayDate.split('.'); if (parts.length !== 3) return null; return `${parts[2]}-${parts[1]}-${parts[0]}`; }
+const calculateExpiryDateISO = (openedISO: string, pao: number) => { const date = new Date(openedISO); date.setMonth(date.getMonth() + pao); return date.toISOString().split('T')[0]; };
+const getDaysLeft = (expiryDate: string) => { const expiry = new Date(expiryDate); const today = new Date(); const diffTime = expiry.getTime() - today.getTime(); return Math.ceil(diffTime / (1000 * 60 * 60 * 24)); };
+
 
 // --- COMPONENTS ---
-
 const OnboardingScreen = ({ onStart, onChangeLang, currentLang, t, theme, insets }: any) => {
     return (
         <View style={[styles.container, {backgroundColor: theme.colors.bg, justifyContent: 'center', padding: 30, paddingBottom: Math.max(insets.bottom, 20) + 20}]}>
@@ -386,7 +325,24 @@ const OnboardingScreen = ({ onStart, onChangeLang, currentLang, t, theme, insets
             <View style={{height: 100, marginBottom: 20}}>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap: 12, paddingHorizontal: 5}}>
                     {AVAILABLE_LANGUAGES.map(l => (
-                        <TouchableOpacity key={String(l.code)} style={[styles.chip, {backgroundColor: theme.colors.card, width: 80, height: 80, justifyContent: 'center', alignItems: 'center', flexDirection: 'column', paddingHorizontal: 5}, currentLang === l.code && {backgroundColor: theme.colors.text}]} onPress={() => onChangeLang(l.code)}>
+ <TouchableOpacity
+  key={String(l.code)}
+  style={[
+    styles.chip,
+    {
+      backgroundColor: theme.colors.card,
+      width: 80,
+      height: 80,
+      justifyContent: 'center',
+      alignItems: 'center',
+      flexDirection: 'column',
+      paddingHorizontal: 5,
+    },
+    currentLang === l.code && { backgroundColor: theme.colors.text },
+  ]}
+  onPress={() => onChangeLang(l.code)}
+>
+
                             <Text style={[styles.chipText, {color: theme.colors.text, marginBottom: 5, fontSize: 12}, currentLang === l.code && {color: theme.colors.bg}]}>{l.label}</Text>
                             <Text style={{fontSize: 24}}>{l.flag}</Text>
                         </TouchableOpacity>
@@ -401,7 +357,6 @@ const OnboardingScreen = ({ onStart, onChangeLang, currentLang, t, theme, insets
     );
 };
 type ProductPressHandler = (id: string) => void;
-
 interface DashboardProps {
   products: Product[];
   onProductPress: ProductPressHandler;
@@ -410,14 +365,13 @@ interface DashboardProps {
   t: any;
   theme: any;
 }
-
 const Dashboard = ({ products, onProductPress, customCategories, lang, t, theme }: any) => {
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'expiry' | 'name'>('expiry');
-  
+ 
   const stdCatsTranslated = STANDARD_CATEGORIES_KEYS.map(key => ({ key, label: t[key] || t.en?.[key] || key }));
-  
+ 
   const allCategories = [...stdCatsTranslated.map(c => c.label), ...customCategories];
   let filtered = products.filter((p: any) => p.name.toLowerCase().includes(search.toLowerCase()));
   if (activeCategory) filtered = filtered.filter((p: any) => {
@@ -484,7 +438,6 @@ const Dashboard = ({ products, onProductPress, customCategories, lang, t, theme 
     </View>
   );
 };
-
 const ManageCategoriesScreen = ({ customCategories, onAddCategory, onDeleteCategory, onBack, t, theme }: any) => {
     const [newCat, setNewCat] = useState('');
     const handleAdd = () => {
@@ -497,7 +450,7 @@ const ManageCategoriesScreen = ({ customCategories, onAddCategory, onDeleteCateg
         <View style={[styles.container, {backgroundColor: theme.colors.bg}]}>
             <View style={styles.header}><TouchableOpacity onPress={onBack} style={{marginRight: 10}}><ArrowLeft size={24} color={theme.colors.text}/></TouchableOpacity><Text style={[styles.headerTitle, {color: theme.colors.text}]}>{t.manageCategories}</Text></View>
             <ScrollView contentContainerStyle={styles.scrollContent}>
-                <Text style={[styles.label, {color: theme.colors.text}]}>{t.newProduct}</Text> 
+                <Text style={[styles.label, {color: theme.colors.text}]}>{t.newProduct}</Text>
                 <View style={{flexDirection: 'row', gap: 10, marginBottom: 20}}>
                     <TextInput style={[styles.input, {flex: 1, marginBottom: 0, backgroundColor: theme.colors.card, color: theme.colors.text}]} placeholder={t.newCatPlaceholder} placeholderTextColor={theme.colors.subText} value={newCat} onChangeText={setNewCat}/>
                     <TouchableOpacity style={[styles.saveButton, {marginTop: 0, paddingHorizontal: 20, justifyContent: 'center', backgroundColor: theme.colors.text}]} onPress={handleAdd}><Plus size={24} color={theme.colors.bg}/></TouchableOpacity>
@@ -510,21 +463,19 @@ const ManageCategoriesScreen = ({ customCategories, onAddCategory, onDeleteCateg
         </View>
     );
 }
-
 const ProductForm = ({ mode, initialProduct, onSave, onCancel, isPremium, onTriggerPremium, customCategories, onManageCategories, t, theme }: any) => {
   const [name, setName] = useState(initialProduct?.name || '');
   const [brand, setBrand] = useState(initialProduct?.brand || '');
   const [pao, setPao] = useState(initialProduct?.pao || 6);
   const [customPao, setCustomPao] = useState('');
-  const [category, setCategory] = useState(initialProduct?.category || STANDARD_CATEGORIES_KEYS[1]); 
+  const [category, setCategory] = useState(initialProduct?.category || STANDARD_CATEGORIES_KEYS[1]);
   const [image, setImage] = useState<string | null>(initialProduct?.imageUri || null);
   const [notes, setNotes] = useState(initialProduct?.notes || '');
   const [offsets, setOffsets] = useState<number[]>(initialProduct?.notificationOffsets || [0]);
   const [openedDateDisplay, setOpenedDateDisplay] = useState(initialProduct?.openedDate ? formatDate(initialProduct.openedDate) : formatDate(new Date().toISOString().split('T')[0]));
-
   useEffect(() => { if (initialProduct?.pao && ![3, 6, 12, 24].includes(initialProduct.pao)) { setCustomPao(initialProduct.pao.toString()); setPao(-1); } }, []);
   const toggleOffset = (offset: number) => {
-    if (offsets.includes(offset)) { setOffsets(offsets.filter(o => o !== offset)); } 
+    if (offsets.includes(offset)) { setOffsets(offsets.filter(o => o !== offset)); }
     else { if (!isPremium && offsets.length >= 1) { onTriggerPremium(t.unlockNotifications); return; } setOffsets([...offsets, offset]); }
   };
   const takePhoto = async () => { const { granted } = await ImagePicker.requestCameraPermissionsAsync(); if (!granted) { alert("Kamera benötigt!"); return; } const result = await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.5 }); if (!result.canceled) setImage(result.assets[0].uri); };
@@ -538,7 +489,6 @@ const ProductForm = ({ mode, initialProduct, onSave, onCancel, isPremium, onTrig
     const expiry = calculateExpiryDateISO(isoDate, finalPao);
     onSave({ id: initialProduct?.id || Date.now().toString(), name, brand, category, pao: finalPao, openedDate: isoDate, expiryDate: expiry, imageUri: image, notes, notificationOffsets: offsets });
   };
-
   return (
     <View style={[styles.container, {backgroundColor: theme.colors.bg}]}>
       <View style={styles.header}><TouchableOpacity onPress={onCancel} style={{marginRight: 10}}><ArrowLeft size={24} color={theme.colors.text}/></TouchableOpacity></View>
@@ -559,7 +509,7 @@ const ProductForm = ({ mode, initialProduct, onSave, onCancel, isPremium, onTrig
     <Text style={[styles.chipText, {color: theme.colors.text}, category === key && {color: theme.colors.bg}]}>{t[key as keyof typeof t]}</Text>
   </TouchableOpacity>
 ))}
-   
+  
             {customCategories.map((cat: string) => (<TouchableOpacity key={String(cat)} style={[styles.chip, {backgroundColor: theme.colors.card}, category === cat && {backgroundColor: theme.colors.text}]} onPress={() => setCategory(cat)}><Text style={[styles.chipText, {color: theme.colors.text}, category === cat && {color: theme.colors.bg}]}>{cat}</Text></TouchableOpacity>))}
             <TouchableOpacity style={[styles.chip, {backgroundColor: 'transparent', borderWidth: 1, borderColor: theme.colors.gold}]} onPress={() => isPremium ? onManageCategories() : onTriggerPremium(t.premiumFeature)}><Text style={[styles.chipText, {color: theme.colors.gold, fontWeight: 'bold'}]}>{t.new}</Text></TouchableOpacity>
         </View>
@@ -583,7 +533,6 @@ const ProductForm = ({ mode, initialProduct, onSave, onCancel, isPremium, onTrig
     </View>
   );
 }
-
 const ProductDetails = ({ product, onBack, onEdit, onDelete, onDuplicate, t, theme }: any) => {
     const days = getDaysLeft(product.expiryDate);
     let statusColor = theme.colors.fresh; let statusText = t.fresh;
@@ -613,13 +562,11 @@ const ProductDetails = ({ product, onBack, onEdit, onDelete, onDuplicate, t, the
         </View>
     )
 }
-
 const SettingsScreen = ({ isPremium, onPremiumPress, onResetPremium, onManageCategories, onChangeLang, currentLang, t, theme, onSetTheme, currentTheme, onExportCSV, onExportPDF, onDeleteExpired, onDeleteAll, onShowLegal, onRestorePurchase }: any) => {
   const [langModalVisible, setLangModalVisible] = useState(false);
   const [themeModalVisible, setThemeModalVisible] = useState(false);
   const [debugCount, setDebugCount] = useState(0);
   const handleDebugTap = () => { const newCount = debugCount + 1; setDebugCount(newCount); if (newCount >= 5) { onResetPremium(); setDebugCount(0); } }
-
   return (
       <View style={[styles.container, {backgroundColor: theme.colors.bg}]}>
         <View style={styles.header}><Text style={[styles.headerTitle, {color: theme.colors.text}]}>{t.settings}</Text></View>
@@ -627,22 +574,19 @@ const SettingsScreen = ({ isPremium, onPremiumPress, onResetPremium, onManageCat
           <Text style={styles.sectionHeader}>{t.appearance}</Text>
           <TouchableOpacity style={[styles.settingItem, {backgroundColor: theme.colors.card}]} onPress={() => setLangModalVisible(true)}><View style={styles.settingLeft}><Globe size={20} color={theme.colors.text}/><Text style={[styles.settingText, {color: theme.colors.text}]}>{t.language}</Text></View><View style={styles.settingRight}><Text style={{color: theme.colors.subText}}>{AVAILABLE_LANGUAGES.find(l => l.code === currentLang)?.label}</Text><ChevronRight size={16} color={theme.colors.subText}/></View></TouchableOpacity>
           <TouchableOpacity style={[styles.settingItem, {backgroundColor: theme.colors.card}]} onPress={() => setThemeModalVisible(true)}><View style={styles.settingLeft}><Palette size={20} color={theme.colors.text}/><Text style={[styles.settingText, {color: theme.colors.text}]}>{t.theme}</Text></View><View style={styles.settingRight}><Text style={{color: theme.colors.subText}}>{THEMES[currentTheme as ThemeKey].label}</Text><ChevronRight size={16} color={theme.colors.subText}/></View></TouchableOpacity>
-
           <Text style={styles.sectionHeader}>{t.premiumContent}</Text>
           <TouchableOpacity style={[styles.settingItem, {backgroundColor: theme.colors.card, opacity: isPremium ? 1 : 0.6}]} onPress={() => { if (isPremium) onManageCategories(); else onPremiumPress(t.premiumFeature); }}><View style={styles.settingLeft}><Folder size={20} color={theme.colors.text}/><Text style={[styles.settingText, {color: theme.colors.text}]}>{t.manageCategories}</Text></View><View style={styles.settingRight}>{!isPremium && <Lock size={14} color={theme.colors.warning} style={{marginRight: 5}}/>}<ChevronRight size={16} color={theme.colors.subText}/></View></TouchableOpacity>
           <TouchableOpacity style={[styles.settingItem, {backgroundColor: theme.colors.card, opacity: isPremium ? 1 : 0.6}]} onPress={() => { if (isPremium) onExportCSV(); else onPremiumPress(t.premiumFeature); }}><View style={styles.settingLeft}><FileText size={20} color={theme.colors.text}/><Text style={[styles.settingText, {color: theme.colors.text}]}>{t.exportCSV}</Text></View><View style={styles.settingRight}>{!isPremium && <Lock size={14} color={theme.colors.warning} style={{marginRight: 5}}/>}<ChevronRight size={16} color={theme.colors.subText}/></View></TouchableOpacity>
           <TouchableOpacity style={[styles.settingItem, {backgroundColor: theme.colors.card, opacity: isPremium ? 1 : 0.6}]} onPress={() => { if (isPremium) onExportPDF(); else onPremiumPress(t.premiumFeature); }}><View style={styles.settingLeft}><Download size={20} color={theme.colors.text}/><Text style={[styles.settingText, {color: theme.colors.text}]}>{t.exportPDF}</Text></View><View style={styles.settingRight}>{!isPremium && <Lock size={14} color={theme.colors.warning} style={{marginRight: 5}}/>}<ChevronRight size={16} color={theme.colors.subText}/></View></TouchableOpacity>
-
           <Text style={styles.sectionHeader}>{t.otherOptions}</Text>
           <TouchableOpacity style={[styles.settingItem, {backgroundColor: theme.colors.card}]} onPress={onRestorePurchase}><View style={styles.settingLeft}><RefreshCcw size={20} color={theme.colors.text}/><Text style={[styles.settingText, {color: theme.colors.text}]}>{t.restorePurchase}</Text></View><View style={styles.settingRight}><ChevronRight size={16} color={theme.colors.subText}/></View></TouchableOpacity>
           <TouchableOpacity style={[styles.settingItem, {backgroundColor: theme.colors.card}]} onPress={onDeleteExpired}><View style={styles.settingLeft}><Trash2 size={20} color={theme.colors.text}/><Text style={[styles.settingText, {color: theme.colors.text}]}>{t.deleteExpired}</Text></View><View style={styles.settingRight}><ChevronRight size={16} color={theme.colors.subText}/></View></TouchableOpacity>
           <TouchableOpacity style={[styles.settingItem, {backgroundColor: theme.colors.card}]} onPress={onDeleteAll}><View style={styles.settingLeft}><Trash2 size={20} color={theme.colors.expired}/><Text style={[styles.settingText, {color: theme.colors.expired}]}>{t.deleteAll}</Text></View><View style={styles.settingRight}><ChevronRight size={16} color={theme.colors.subText}/></View></TouchableOpacity>
-          
+         
           <View style={{flexDirection: 'row', justifyContent: 'center', marginTop: 10}}>
             <TouchableOpacity style={{padding: 10}} onPress={() => onShowLegal('privacy')}><Text style={{color: theme.colors.subText, fontSize: 12, textDecorationLine: 'underline'}}>{t.privacy}</Text></TouchableOpacity>
             <TouchableOpacity style={{padding: 10}} onPress={() => onShowLegal('terms')}><Text style={{color: theme.colors.subText, fontSize: 12, textDecorationLine: 'underline'}}>{t.terms}</Text></TouchableOpacity>
           </View>
-
           <TouchableOpacity style={[styles.premiumBanner, isPremium && {backgroundColor: theme.colors.fresh}]} onPress={() => !isPremium && onPremiumPress(t.premiumTitle)}>
               {isPremium ? (<Text style={{color: 'white', fontWeight: 'bold'}}>{t.premiumActive}</Text>) : (<View style={{flexDirection: 'row', alignItems: 'center'}}><Sparkles size={20} color={theme.colors.gold} style={{marginRight: 10}}/><Text style={{color: theme.colors.gold, fontWeight: 'bold'}}>{t.unlockPremium}</Text></View>)}
           </TouchableOpacity>
@@ -678,28 +622,23 @@ const SettingsScreen = ({ isPremium, onPremiumPress, onResetPremium, onManageCat
       </View>
   );
 }
-
 const LegalModal = ({ visible, onClose, type, lang, t, theme }: any) => {
     // Sicherer Zugriff auf die Rechtstexte
     const textGroup = type === 'privacy' ? LEGAL_TEXTS.privacy : LEGAL_TEXTS.terms;
     // @ts-ignore
     const text = textGroup[lang] || textGroup.en;
-
     return (<Modal visible={visible} animationType="slide"><SafeAreaProvider><View style={[styles.container, {backgroundColor: theme.colors.bg, padding: 20}]}><View style={{flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 20, marginTop: 40}}><TouchableOpacity onPress={onClose} style={{padding: 5}}><X size={30} color={theme.colors.text} /></TouchableOpacity></View><ScrollView contentContainerStyle={{paddingBottom: 50}}><Text style={{fontSize: 16, lineHeight: 24, color: theme.colors.text}}>{text}</Text><Text style={{fontSize: 14, color: theme.colors.subText, marginTop: 30, fontStyle: 'italic'}}>{t.legalDisclaimer}</Text></ScrollView></View></SafeAreaProvider></Modal>)
 }
-
 const PremiumModal = ({ visible, onClose, onBuy, reason, t, theme }: any) => (
   <Modal visible={visible} animationType="slide" transparent><View style={styles.modalOverlay}><View style={[styles.modalContent, {backgroundColor: theme.colors.bg}]}><TouchableOpacity style={styles.closeModal} onPress={onClose}><X size={24} color={theme.colors.text}/></TouchableOpacity><View style={{alignItems: 'center', marginBottom: 20}}><View style={{width: 60, height: 60, borderRadius: 30, backgroundColor: '#FFF8E1', alignItems: 'center', justifyContent: 'center', marginBottom: 10}}><Sparkles size={30} color={theme.colors.gold} fill={theme.colors.gold} /></View><Text style={{fontSize: 16, fontWeight: 'bold', color: theme.colors.gold, marginBottom: 5}}>{reason}</Text><Text style={{fontSize: 22, fontWeight: 'bold', color: theme.colors.text}}>{t.premiumTitle}</Text></View><ScrollView style={{maxHeight: 200, marginBottom: 20}}>{(t.featuresList || []).map((feat: string, i: number) => (<View key={i} style={{flexDirection: 'row', alignItems: 'center', marginBottom: 10}}><Check size={18} color={theme.colors.fresh} style={{marginRight: 10}} /><Text style={{color: theme.colors.text, fontSize: 14}}>{feat}</Text></View>))}</ScrollView><TouchableOpacity style={[styles.buyButton, {backgroundColor: theme.colors.gold}]} onPress={onBuy}><Text style={styles.buyButtonText}>{t.upgradeBtn}</Text></TouchableOpacity></View></View></Modal>
 );
-
 const SuccessModal = ({ visible, onClose, t, theme }: any) => (<Modal visible={visible} animationType="fade" transparent><View style={styles.modalOverlay}><View style={[styles.modalContent, {backgroundColor: theme.colors.bg, alignItems: 'center'}]}><View style={{width: 60, height: 60, borderRadius: 30, backgroundColor: '#FFF8E1', alignItems: 'center', justifyContent: 'center', marginBottom: 10}}><CheckCircle size={30} color={theme.colors.gold} fill={theme.colors.gold} /></View><Text style={{fontSize: 24, fontWeight: 'bold', color: theme.colors.text, marginTop: 10, textAlign: 'center'}}>{t.successTitle}</Text><Text style={{fontSize: 16, color: theme.colors.subText, marginVertical: 20, textAlign: 'center', lineHeight: 24}}>{t.successBody}</Text><TouchableOpacity style={[styles.buyButton, {backgroundColor: theme.colors.fresh, width: '100%'}]} onPress={onClose}><Text style={styles.buyButtonText}>{t.close}</Text></TouchableOpacity></View></View></Modal>);
-
 // --- MAIN ---
+// === MAIN APP ===
 function MainApp() {
   const insets = useSafeAreaInsets();
-  // FIXED: activeTab als string definiert
   type Tab = 'dashboard' | 'add' | 'settings' | 'details' | 'edit' | 'manageCategories';
-const [activeTab, setActiveTab] = useState<Tab>('dashboard');
+  const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [customCategories, setCustomCategories] = useState<string[]>([]);
@@ -707,7 +646,7 @@ const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const [showSuccess, setShowSuccess] = useState(false);
   const [premiumReason, setPremiumReason] = useState('');
   const [isPremium, setIsPremium] = useState(false);
-  const [language, setLanguage] = useState<Language>('en'); 
+  const [language, setLanguage] = useState<Language>('en');
   const [currentTheme, setCurrentTheme] = useState<ThemeKey>('beige');
   const [legalModalVisible, setLegalModalVisible] = useState(false);
   const [legalType, setLegalType] = useState<'privacy'|'terms'>('privacy');
@@ -715,230 +654,308 @@ const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const [hasOnboarded, setHasOnboarded] = useState(false);
 
   const theme = THEMES[currentTheme];
-  const t: any = TRANSLATIONS[language] || TRANSLATIONS.en; 
+  const t: any = TRANSLATIONS[language] || TRANSLATIONS.en;
 
-  // --- IAP Setup & Listeners (FIXED) ---
-  useEffect(() => { 
-      loadData(); 
-      requestPermissions();
-      
-      const setupIAP = async () => {
-        try {
-          // Wir warten explizit auf die Verbindung
-          await initConnection();
-        } catch (err) {
-          console.log("IAP Connection Error (harmless):", err);
-        }
-      };
-      
-      setupIAP();
-
-const purchaseUpdateSubscription = purchaseUpdatedListener(async (purchase: any) => {
-  try {
-    console.log("Purchase received:", purchase);
-
-    const receipt = purchase.transactionReceipt;
-    if (receipt) {
-
-      // Transaktion abschließen
-      await finishTransaction({ purchase });
-
-      // Premium aktivieren
-      setIsPremium(true);
-      await AsyncStorage.setItem('isPremium', 'true');
-
-      // Erfolg anzeigen
-      setShowSuccess(true);
-    }
-
-  } catch (err) {
-    console.warn("Fehler im purchaseUpdatedListener:", err);
-    Alert.alert("Fehler", "Kauf konnte nicht bestätigt werden.");
-  }
-});
-
-// --- PURCHASE ERROR LISTENER ---
-const purchaseErrorSubscription = purchaseErrorListener((error: any) => {
-  console.warn("IAP Error:", error);
-
-  // cancel codes: 1 = user canceled, 2 = service unavailable
-  if (error?.responseCode === 1 || error?.responseCode === 2) return;
-
-  const msg = error.message || JSON.stringify(error);
-  Alert.alert("Kauf fehlgeschlagen", msg);
-});
-
-// CLEANUP
-return () => {
-  purchaseUpdateSubscription?.remove?.();
-  purchaseErrorSubscription?.remove?.();
-  try { endConnection(); } catch(e) {}
+  // === HELPER FUNCTIONS ===
+const requestPermissions = async () => { 
+  await Notifications.requestPermissionsAsync(); 
 };
 
-  }, []);
-
-  const requestPermissions = async () => { await Notifications.requestPermissionsAsync(); };
-  
-  const loadData = async () => {
-    try {
-      const stored = await AsyncStorage.getItem('products');
-      if (stored) setProducts(JSON.parse(stored));
-      const storedCats = await AsyncStorage.getItem('customCategories');
-      if (storedCats) setCustomCategories(JSON.parse(storedCats));
-      const premiumStatus = await AsyncStorage.getItem('isPremium');
-      if (premiumStatus === 'true') setIsPremium(true);
-      const savedLang = await AsyncStorage.getItem('language');
-      if (savedLang && TRANSLATIONS[savedLang as Language]) {
-          setLanguage(savedLang as Language);
-      } else {
-          setLanguage('en');
-      }
-      const savedTheme = await AsyncStorage.getItem('theme');
-      if (savedTheme && THEMES[savedTheme as ThemeKey]) setCurrentTheme(savedTheme as ThemeKey);
-      const onboarded = await AsyncStorage.getItem('hasOnboarded');
-      if (onboarded === 'true') setHasOnboarded(true);
-    } catch (e) { console.error(e); }
-  };
-
-  const changeLanguage = async (lang: Language) => { setLanguage(lang); await AsyncStorage.setItem('language', String(lang));  }
-  const changeTheme = async (key: ThemeKey) => { setCurrentTheme(key); await AsyncStorage.setItem('theme', key); }
-  const finishOnboarding = async () => { setHasOnboarded(true); await AsyncStorage.setItem('hasOnboarded', 'true'); }
-
-  const triggerPremium = (reason: string) => { setPremiumReason(reason); setShowPremium(true); }
-  const resetPremium = async () => { 
-      await AsyncStorage.removeItem('isPremium'); 
-      await AsyncStorage.removeItem('hasOnboarded'); 
-      setIsPremium(false); 
-      setHasOnboarded(false);
-      Alert.alert("Reset", t.resetMsg); 
-      changeTheme('beige'); 
-  };
-
-  // --- KAUF FUNKTION (REPARIERT UND ROBUST) ---
-  const handleBuyPremium = async () => {
-    try {
-      // 1. Verbindung sicherstellen (falls sie beim Start nicht geklappt hat)
-      
-
-      // 2. Prüfen ob getProducts existiert (um "undefined is not a function" abzufangen)
-      // @ts-ignore
-      if (typeof getProducts !== 'function') {
-         throw new Error("IAP Library Fehler: getProducts fehlt. Bitte App neu installieren.");
-      }
-
-      // 3. Produkte laden
-      // @ts-ignore
-// Produkte abrufen
-const products = await getProducts(productIds);
-
-if (!products || products.length === 0) {
-  Alert.alert(
-    "Fehler",
-    "Produkt 'premium_unlock' wurde nicht gefunden.\n" +
-    "Bitte stelle sicher, dass:\n" +
-    "1) Die SKU exakt 'premium_unlock' heißt\n" +
-    "2) Die App über den Play Store (nicht manuell) installiert wurde\n" +
-    "3) Dein Account als Tester eingetragen ist"
-  );
-  return;
-}
-
-// Kauf starten
-try {
-await requestPurchase(productIds[0] as any);
-} catch (err) {
-  console.warn("Kaufen fehlgeschlagen:", err);
-  Alert.alert("Fehler", "Kauf konnte nicht gestartet werden.");
-  return;
-}
-
-
-      
-    } catch (err: any) {
-      const errorMsg = err?.message || JSON.stringify(err) || "Unbekannter Fehler";
-      Alert.alert("IAP Fehler", errorMsg);
-    }
-  };
-
-  const restorePurchases = async () => {
+const loadData = async () => {
   try {
-    const purchases = await getAvailablePurchases();
-    let restored = false;
-
-for (const purchase of purchases) {
-  if (purchase.productId === PRODUCT_ID) {
- await finishTransaction({ purchase });
-    setIsPremium(true);
-    await AsyncStorage.setItem('isPremium', 'true');
-    restored = true;
+    const stored = await AsyncStorage.getItem('products');
+    if (stored) setProducts(JSON.parse(stored));
+    
+    const storedCats = await AsyncStorage.getItem('customCategories');
+    if (storedCats) setCustomCategories(JSON.parse(storedCats));
+    
+    const premiumStatus = await AsyncStorage.getItem('isPremium');
+    if (premiumStatus === 'true') setIsPremium(true);
+    
+    const savedLang = await AsyncStorage.getItem('language');
+    if (savedLang && TRANSLATIONS[savedLang as Language]) setLanguage(savedLang as Language);
+    
+    const savedTheme = await AsyncStorage.getItem('theme');
+    if (savedTheme && THEMES[savedTheme as ThemeKey]) setCurrentTheme(savedTheme as ThemeKey);
+    
+    const onboarded = await AsyncStorage.getItem('hasOnboarded');
+    if (onboarded === 'true') setHasOnboarded(true);
+  } catch (e) { 
+    console.error(e); 
   }
-}
+};
 
-    if (restored) {
-      Alert.alert("Success", "Premium restored.");
-    } else {
-      Alert.alert("Info", "No purchases found.");
+const changeLanguage = async (lang: Language) => { 
+  setLanguage(lang); 
+  await AsyncStorage.setItem('language', String(lang)); 
+};
+
+const changeTheme = async (key: ThemeKey) => { 
+  setCurrentTheme(key); 
+  await AsyncStorage.setItem('theme', key); 
+};
+
+const finishOnboarding = async () => { 
+  setHasOnboarded(true); 
+  await AsyncStorage.setItem('hasOnboarded', 'true'); 
+};
+
+const triggerPremium = (reason: string) => { 
+  setPremiumReason(reason); 
+  setShowPremium(true); 
+};
+
+const resetPremium = async () => { 
+  await AsyncStorage.removeItem('isPremium'); 
+  await AsyncStorage.removeItem('hasOnboarded'); 
+  setIsPremium(false); 
+  setHasOnboarded(false); 
+  Alert.alert("Reset", t.resetMsg || "Premium entfernt"); 
+  changeTheme('beige'); 
+};
+
+ // === IAP INITIALISIERUNG (react-native-iap v13.x) ===
+useEffect(() => {
+  let purchaseUpdateSubscription: any;
+  let purchaseErrorSubscription: any;
+
+  const initIAP = async () => {
+    try {
+      console.log('🔄 Initialisiere IAP Connection...');
+
+      const connected = await initConnection();
+      console.log('✅ IAP Connection erfolgreich:', connected);
+
+      // Kurze Pause, damit Play Billing sauber initialisiert ist
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Vorherige Käufe wiederherstellen
+      try {
+        const purchases = await getAvailablePurchases();
+        console.log('📦 Vorherige Käufe:', purchases.length);
+
+        const hasPremium = purchases.some(
+          (p: any) => p.productId === PRODUCT_ID
+        );
+
+        if (hasPremium) {
+          console.log('✅ Premium bereits gekauft, aktiviere...');
+          setIsPremium(true);
+          await AsyncStorage.setItem('isPremium', 'true');
+        }
+      } catch {
+        console.log('ℹ️ Keine vorherigen Käufe gefunden');
+      }
+    } catch (error: any) {
+      console.error('❌ IAP Init Fehler:', error);
+
+      if (error?.code === 'E_IAP_NOT_AVAILABLE') {
+        Alert.alert(
+          'Billing nicht verfügbar',
+          'In-App-Käufe sind auf diesem Gerät nicht verfügbar.'
+        );
+      } else {
+        Alert.alert(
+          'IAP Fehler',
+          error?.message || 'Unbekannter Initialisierungsfehler'
+        );
+      }
+    }
+  };
+
+  // === PURCHASE UPDATE LISTENER ===
+purchaseUpdateSubscription = purchaseUpdatedListener(
+  async (purchase: Purchase | SubscriptionPurchase) => {
+    console.log('📦 Purchase Update empfangen:', purchase);
+
+    if (purchase.productId !== PRODUCT_ID) return;
+
+    try {
+      await finishTransaction({ purchase });
+
+      console.log('✅ Kauf erfolgreich abgeschlossen');
+
+      if (!isPremium) {
+        setIsPremium(true);
+        await AsyncStorage.setItem('isPremium', 'true');
+        setShowPremium(false);
+        setShowSuccess(true);
+      }
+    } catch (err) {
+      console.error('❌ FinishTransaction Fehler:', err);
+      Alert.alert('Fehler', 'Kauf konnte nicht abgeschlossen werden.');
+    }
+  }
+);
+
+
+  // === PURCHASE ERROR LISTENER ===
+  purchaseErrorSubscription = purchaseErrorListener(
+    (error: PurchaseError) => {
+      console.log('❌ Purchase Error:', error);
+
+      if (error.code === 'E_USER_CANCELLED') {
+        console.log('ℹ️ Kauf vom Nutzer abgebrochen');
+        return;
+      }
+
+      let message = 'Ein unbekannter Fehler ist aufgetreten.';
+
+      if (error.code === 'E_ITEM_UNAVAILABLE') {
+        message =
+          'Produkt nicht verfügbar.\n\n' +
+          '✓ App im Play Store (Testing Track)\n' +
+          '✓ Produkt-ID exakt "premium_unlock"\n' +
+          '✓ Tester-E-Mail eingetragen\n' +
+          '✓ 2–4 Stunden nach Upload gewartet';
+      } else if (error.code === 'E_NETWORK_ERROR') {
+        message = 'Netzwerkfehler. Bitte Internetverbindung prüfen.';
+      } else if (error.message) {
+        message = error.message;
+      }
+
+      Alert.alert('Kauf fehlgeschlagen', message);
+    }
+  );
+
+  // === BOOTSTRAP (WICHTIG: async korrekt gekapselt) ===
+  const bootstrap = async () => {
+    await loadData();
+    await initIAP();
+    await requestPermissions();
+  };
+
+  bootstrap();
+
+  // === CLEANUP ===
+  return () => {
+    if (purchaseUpdateSubscription) {
+      purchaseUpdateSubscription.remove();
+    }
+    if (purchaseErrorSubscription) {
+      purchaseErrorSubscription.remove();
+    }
+    endConnection().catch(() => {});
+  };
+}, []);
+
+
+// === KAUF FUNKTION ===
+const handleBuyPremium = async () => {
+  try {
+    console.log('🛒 Starte Kaufprozess...');
+    await requestPurchase({
+  skus: [PRODUCT_ID],
+});
+
+    console.log('✅ Purchase Request gesendet');
+  } catch (err: any) {
+    if (err?.code === 'E_USER_CANCELLED') {
+      console.log('ℹ️ Kauf vom Nutzer abgebrochen');
+      return;
     }
 
-  } catch (err) {
-    Alert.alert("Error", "Restore failed.");
+    console.error('❌ Buy Premium Fehler:', err);
+
+    let errorMessage = err?.message || 'Ein unbekannter Fehler ist aufgetreten.';
+
+    if (err?.code === 'E_ALREADY_OWNED') {
+      errorMessage =
+        'Du hast Premium bereits gekauft.\n\nBitte nutze „Käufe wiederherstellen“.';
+    } else if (err?.code === 'E_ITEM_UNAVAILABLE') {
+      errorMessage =
+        'Produkt nicht verfügbar.\n\n' +
+        '✓ App im Play Store (Closed/Internal Test)\n' +
+        '✓ Produkt-ID exakt "premium_unlock"\n' +
+        '✓ Tester-E-Mail eingetragen\n' +
+        '✓ 2–4 Stunden nach Upload gewartet';
+    }
+
+    Alert.alert('Kauf fehlgeschlagen', errorMessage);
+  }
+};
+
+
+// === RESTORE PURCHASES ===
+const restorePurchases = async () => {
+  try {
+    console.log('🔄 Stelle Käufe wieder her...');
+    const purchases = await getAvailablePurchases();
+    console.log('📦 Gefundene Käufe:', purchases.length);
+    
+    let restored = false;
+    for (const purchase of purchases) {
+      if (purchase.productId === PRODUCT_ID) {      
+        setIsPremium(true);
+        await AsyncStorage.setItem('isPremium', 'true');
+        restored = true;
+        break;
+      }
+    }
+    
+if (restored) {
+  setShowSuccess(true);
+  Alert.alert('Erfolg', 'Premium wurde wiederhergestellt! 🎉');
+} else {
+      Alert.alert(
+        'Keine Käufe gefunden', 
+        'Es wurden keine vorherigen Käufe gefunden.\n\nStelle sicher, dass du mit dem richtigen Google-Konto angemeldet bist.'
+      );
+    }
+  } catch (err: any) {
+    console.error('❌ Restore Fehler:', err);
+    Alert.alert('Fehler', 'Käufe konnten nicht wiederhergestellt werden.');
   }
 };
   const addCustomCategory = async (cat: string) => { const newCats = [...customCategories, cat]; setCustomCategories(newCats); await AsyncStorage.setItem('customCategories', JSON.stringify(newCats)); }
   const deleteCustomCategory = async (cat: string) => { const newCats = customCategories.filter(c => c !== cat); setCustomCategories(newCats); await AsyncStorage.setItem('customCategories', JSON.stringify(newCats)); }
-
   const saveProduct = async (newProduct: Product) => {
     if (activeTab === 'add' && !isPremium && products.length >= 5) { triggerPremium(t.limitReached); return; }
-    
+   
     const notifIds: string[] = [];
     if (newProduct.notificationIds) { for (const id of newProduct.notificationIds) await Notifications.cancelScheduledNotificationAsync(id); }
-    
+   
     const [y, m, d] = newProduct.expiryDate.split('-').map(Number);
     const expiryDate = new Date(y, m - 1, d, 10, 0, 0);
     const now = new Date();
-
     for (const offset of newProduct.notificationOffsets) {
        const triggerDate = new Date(expiryDate);
        triggerDate.setDate(triggerDate.getDate() - offset);
-
        if (triggerDate.getTime() > (now.getTime() + 5 * 60 * 1000)) {
            try {
                const id = await Notifications.scheduleNotificationAsync({
                    content: { title: t.notificationTitle, body: t.notificationBody.replace('{{name}}', newProduct.name) },
-                   trigger: { type: 'date', date: triggerDate } as any, 
+                   trigger: { type: 'date', date: triggerDate } as any,
                });
                notifIds.push(id);
            } catch (e) { }
        }
     }
-
     const finalProduct = { ...newProduct, notificationIds: notifIds };
     let updatedProducts;
-    if (activeTab === 'edit') { updatedProducts = products.map(p => p.id === finalProduct.id ? finalProduct : p); setSelectedProductId(null); setActiveTab('dashboard'); } 
+    if (activeTab === 'edit') { updatedProducts = products.map(p => p.id === finalProduct.id ? finalProduct : p); setSelectedProductId(null); setActiveTab('dashboard'); }
     else { updatedProducts = [finalProduct, ...products]; setActiveTab('dashboard'); }
-    setProducts(updatedProducts); await AsyncStorage.setItem('products', JSON.stringify(updatedProducts)); setDuplicateData(null); 
+    setProducts(updatedProducts); await AsyncStorage.setItem('products', JSON.stringify(updatedProducts)); setDuplicateData(null);
   };
-
   const deleteProduct = async () => { if (!selectedProductId) return; const p = products.find(p => p.id === selectedProductId); if (p?.notificationIds) { for (const id of p.notificationIds) await Notifications.cancelScheduledNotificationAsync(id); } const updated = products.filter(p => p.id !== selectedProductId); setProducts(updated); await AsyncStorage.setItem('products', JSON.stringify(updated)); setSelectedProductId(null); setActiveTab('dashboard'); };
   const handleDuplicate = () => { if (!isPremium) { triggerPremium(t.duplicateUnlock); return; } const p = products.find(p => p.id === selectedProductId); if (p) { setDuplicateData({ ...p, id: '', notificationIds: [] }); setActiveTab('add'); } }
   const deleteExpired = async () => { Alert.alert(t.deleteTitle, t.deleteExpiredMsg, [ { text: t.cancel }, { text: t.delete, style: 'destructive', onPress: async () => { const now = new Date(); const newProds = products.filter(p => new Date(p.expiryDate) >= now); setProducts(newProds); await AsyncStorage.setItem('products', JSON.stringify(newProds)); }} ]) }
   const deleteAll = async () => { Alert.alert(t.deleteTitle, t.deleteAllMsg, [ { text: t.cancel }, { text: t.delete, style: 'destructive', onPress: async () => { setProducts([]); await AsyncStorage.setItem('products', JSON.stringify([])); }} ]) }
   const generateExportData = () => { let csv = `${t.nameLabel.replace('*','')},${t.brandLabel},${t.categoryLabel.replace('*','')},${t.openedLabel.replace('*','').split(' ')[0]},${t.expiryDate},Status\n`; let htmlRows = ""; const now = new Date(); products.forEach(p => { const status = new Date(p.expiryDate) < now ? t.expired : t.fresh; const displayCat = STANDARD_CATEGORIES_KEYS.includes(p.category) ? (t[p.category] || t.en?.[p.category]) : p.category; csv += `"${p.name}","${p.brand}","${displayCat}","${p.openedDate}","${p.expiryDate}","${status}"\n`; htmlRows += `<tr><td>${p.name}</td><td>${p.brand}</td><td>${displayCat}</td><td>${p.expiryDate}</td><td>${status}</td></tr>`; }); const html = `<html><body><h1>BeautyExpiry Export</h1><table border="1" style="width:100%;border-collapse:collapse;"><tr><th>${t.nameLabel.replace('*','')}</th><th>${t.brandLabel}</th><th>${t.categoryLabel.replace('*','')}</th><th>${t.expiryDate}</th><th>Status</th></tr>${htmlRows}</table></body></html>`; return { csv, html }; }
-  
-  const exportCSV = async () => { 
-      try { 
-          const { csv } = generateExportData(); 
+ 
+  const exportCSV = async () => {
+      try {
+          const { csv } = generateExportData();
           // FIX: String 'utf8' statt Enum verwenden, um Typfehler zu vermeiden
           // @ts-ignore
-          const fileUri = (FileSystem.documentDirectory || FileSystem.cacheDirectory) + 'beauty_expiry.csv'; 
+          const fileUri = (FileSystem.documentDirectory || FileSystem.cacheDirectory) + 'beauty_expiry.csv';
           // @ts-ignore
-          await FileSystem.writeAsStringAsync(fileUri, csv, { encoding: 'utf8' }); 
-          await Sharing.shareAsync(fileUri, { mimeType: 'text/csv', dialogTitle: 'Export CSV' }); 
-      } catch (e) { Alert.alert("Error", "Export failed"); } 
+          await FileSystem.writeAsStringAsync(fileUri, csv, { encoding: 'utf8' });
+          await Sharing.shareAsync(fileUri, { mimeType: 'text/csv', dialogTitle: 'Export CSV' });
+      } catch (e) { Alert.alert("Error", "Export failed"); }
   }
-  
+ 
   const exportPDF = async () => { const { html } = generateExportData(); const { uri } = await Print.printToFileAsync({ html }); await Sharing.shareAsync(uri); }
-
   const renderContent = () => {
       if (!hasOnboarded) return <OnboardingScreen onStart={finishOnboarding} onChangeLang={changeLanguage} currentLang={language} t={t} theme={theme} insets={insets} />
       switch (activeTab) {
@@ -951,7 +968,6 @@ for (const purchase of purchases) {
           default: return null;
       }
   };
-
   return (
     <View style={[styles.appContainer, { paddingTop: insets.top, backgroundColor: theme.colors.bg }]}>
       <ExpoStatusBar style={currentTheme === 'dark' ? "light" : "dark"} />
@@ -969,9 +985,7 @@ for (const purchase of purchases) {
     </View>
   );
 }
-
 export default function App() { return ( <SafeAreaProvider><MainApp /></SafeAreaProvider> ); }
-
 const styles = StyleSheet.create({
   appContainer: { flex: 1 },
   mainContent: { flex: 1 },
@@ -980,9 +994,9 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 32, fontWeight: 'bold' },
   searchBar: { flexDirection: 'row', padding: 10, borderRadius: 12, marginTop: 10, alignItems: 'center', shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 5, elevation: 2 },
   searchInput: { marginLeft: 10, flex: 1, fontSize: 16 },
-  scrollContent: { paddingBottom: 120 }, 
+  scrollContent: { paddingBottom: 120 },
   card: { borderRadius: 16, padding: 16, marginBottom: 12, shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 5, elevation: 2 },
-  productImage: { width: 80, height: 80, borderRadius: 12, marginRight: 0 }, 
+  productImage: { width: 80, height: 80, borderRadius: 12, marginRight: 0 },
   productImagePlaceholder: { width: 80, height: 80, borderRadius: 12, backgroundColor: '#eee', alignItems: 'center', justifyContent: 'center' },
   detailRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12 },
   divider: { height: 1 },

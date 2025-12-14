@@ -37,7 +37,13 @@
     },
     "plugins": [
       "expo-notifications",
-      "expo-image-picker"
+      "expo-image-picker",
+      [
+        "react-native-iap",
+        {
+          "store": "play"
+        }
+      ]
     ],
     "extra": {
       "router": {},

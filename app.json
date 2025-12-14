@@ -21,25 +21,23 @@
     },
     "android": {
       "package": "app.sucandigital.beautyexpiry",
-      "versionCode": 13,
+      "versionCode": 22,
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#ffffff"
       },
       "permissions": [
-        "com.android.vending.BILLING",
-        "android.permission.CAMERA",
-        "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.WRITE_EXTERNAL_STORAGE",
-        "android.permission.SCHEDULE_EXACT_ALARM"
+  "com.android.vending.BILLING",
+  "android.permission.CAMERA",
+  "android.permission.SCHEDULE_EXACT_ALARM"
       ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-router",
       "expo-notifications",
+      "expo-image-picker",
       "react-native-iap"
     ],
     "extra": {

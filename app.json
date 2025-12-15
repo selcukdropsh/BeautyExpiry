@@ -12,7 +12,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "app.sucandigital.beautyexpiry"
@@ -35,7 +37,22 @@
     },
     "plugins": [
       "expo-notifications",
-      "expo-image-picker"
+      "expo-image-picker",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 36,
+            "targetSdkVersion": 36
+          }
+        }
+      ],
+      [
+        "react-native-iap",
+        {
+          "store": "play"
+        }
+      ]
     ],
     "extra": {
       "router": {},
